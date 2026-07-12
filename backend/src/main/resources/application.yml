@@ -1,0 +1,80 @@
+spring:
+  application:
+    name: guide-genie
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/guidegenie}
+    username: ${DB_USERNAME:guidegenie}
+    password: ${DB_PASSWORD:guidegenie}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  # 사내 SSO(OIDC) + JWT 자원서버
+  # provider/issuer는 여기에 고정하지 않고 DB(sso_provider)에서 동적으로 로드한다.
+  #  - 로그인(OAuth2 Client)   : DynamicClientRegistrationRepository
+  #  - API 인증(Resource Server): 다중 issuer 리졸버(DynamicJwtAuthenticationManagerResolver)
+  # 관리 API: POST/PUT/DELETE /api/admin/sso-providers
+  # 따라서 정적 registration/issuer-uri 설정을 두지 않는다.
+
+  # Spring AI — Gemini(생성) + Vertex AI Embedding + pgvector
+  ai:
+    vertex:
+      ai:
+        gemini:
+          project-id: ${GOOGLE_CLOUD_PROJECT:}
+          location: ${GOOGLE_CLOUD_LOCATION:us-central1}
+          chat:
+            options:
+              model: gemini-2.5-flash
+              temperature: 0.2
+        embedding:
+          project-id: ${GOOGLE_CLOUD_PROJECT:}
+          location: ${GOOGLE_CLOUD_LOCATION:us-central1}
+          options:
+            model: text-embedding-004
+    vectorstore:
+      pgvector:
+        initialize-schema: false
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        dimensions: 768
+
+# 애플리케이션 커스텀 설정
+guidegenie:
+  security:
+    # 소스 연동 토큰 암호화 키(AES-256). 운영에서는 반드시 외부 주입.
+    token-encryption-key: ${TOKEN_ENC_KEY:0123456789abcdef0123456789abcdef}
+  rag:
+    chunk-size: 800
+    chunk-overlap: 100
+    top-k: 6
+  sync:
+    # 증분 동기화 주기(cron)
+    cron: ${SYNC_CRON:0 0 * * * *}
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+server:
+  port: 8080
+
+logging:
+  level:
+    io.hz.guidegenie: DEBUG
