@@ -1,31 +1,26 @@
-import { NavLink, Route, Routes } from 'react-router-dom'
+import { Route, Routes } from 'react-router-dom'
+import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
-import SourceSettings from './pages/SourceSettings'
-import GuideGenerate from './pages/GuideGenerate'
-import GuideEditor from './pages/GuideEditor'
-import GuideViewer from './pages/GuideViewer'
-import QnaChat from './pages/QnaChat'
+import ProjectGuides from './pages/ProjectGuides'
+import ProjectSources from './pages/ProjectSources'
+import ProjectQna from './pages/ProjectQna'
+import GuideNew from './pages/GuideNew'
+import GuideWorkspace from './pages/GuideWorkspace'
 
 export default function App() {
   return (
     <div className="layout">
-      <aside className="sidebar">
-        <h1>guide-genie</h1>
-        <nav>
-          <NavLink to="/" end>대시보드</NavLink>
-          <NavLink to="/sources">소스 연동</NavLink>
-          <NavLink to="/generate">가이드 생성</NavLink>
-          <NavLink to="/qna">Q&amp;A</NavLink>
-        </nav>
-      </aside>
+      <Sidebar />
       <main className="content">
         <Routes>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/sources" element={<SourceSettings />} />
-          <Route path="/generate" element={<GuideGenerate />} />
-          <Route path="/guides/:guideId/edit" element={<GuideEditor />} />
-          <Route path="/guides/:guideId" element={<GuideViewer />} />
-          <Route path="/qna" element={<QnaChat />} />
+
+          {/* 프로젝트 컨텍스트 — 네비게이션은 사이드바가 담당 */}
+          <Route path="/projects/:projectId" element={<ProjectGuides />} />
+          <Route path="/projects/:projectId/sources" element={<ProjectSources />} />
+          <Route path="/projects/:projectId/qna" element={<ProjectQna />} />
+          <Route path="/projects/:projectId/guides/new" element={<GuideNew />} />
+          <Route path="/projects/:projectId/guides/:guideId" element={<GuideWorkspace />} />
         </Routes>
       </main>
     </div>

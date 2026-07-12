@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { projectsApi, type Project } from '../api/client'
 
-// 프로젝트 목록/대시보드: 프로젝트 카드 + 생성.
+// 프로젝트 목록/대시보드: 프로젝트 카드(클릭 시 상세) + 생성.
 export default function Dashboard() {
   const [projects, setProjects] = useState<Project[]>([])
   const [name, setName] = useState('')
@@ -30,11 +31,16 @@ export default function Dashboard() {
       </div>
 
       {projects.map((p) => (
-        <div className="card" key={p.id}>
+        <Link
+          className="card"
+          key={p.id}
+          to={`/projects/${p.id}`}
+          style={{ display: 'block', color: 'inherit' }}
+        >
           <strong>{p.name}</strong>
           <div style={{ color: '#57606a' }}>{p.description}</div>
           <div style={{ color: '#57606a', fontSize: 12 }}>owner: {p.owner}</div>
-        </div>
+        </Link>
       ))}
       {projects.length === 0 && <p style={{ color: '#57606a' }}>아직 프로젝트가 없습니다.</p>}
     </div>

@@ -1,0 +1,33 @@
+spring:
+  application:
+    name: guide-genie-worker
+  main:
+    web-application-type: none   # 웹 서버 없음(스케줄러 데몬)
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/guidegenie}
+    username: ${DB_USERNAME:guidegenie}
+    password: ${DB_PASSWORD:guidegenie}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  flyway:
+    enabled: false             # 스키마 소유는 app-api
+
+guidegenie:
+  security:
+    token-encryption-key: ${TOKEN_ENC_KEY:0123456789abcdef0123456789abcdef}
+  rag:
+    chunk-size: 800
+    chunk-overlap: 100
+  sync:
+    # 증분 동기화 주기(cron). 기본 매시 정각.
+    cron: ${SYNC_CRON:0 0 * * * *}
+
+logging:
+  level:
+    io.hz.guidegenie: DEBUG
