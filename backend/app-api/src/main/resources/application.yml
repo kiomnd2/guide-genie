@@ -2,6 +2,17 @@ spring:
   application:
     name: guide-genie-api
 
+  # AI 모델 자동설정 기본 비활성(키 없이 부팅 → 빈 없으면 stub 폴백). 'ai' 프로파일이 chat/embedding만 켠다. docs/AI-SETUP.md
+  ai:
+    model:
+      chat: none
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/guidegenie}
     username: ${DB_USERNAME:guidegenie}

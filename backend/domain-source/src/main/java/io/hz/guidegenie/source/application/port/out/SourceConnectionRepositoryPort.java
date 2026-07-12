@@ -9,4 +9,5 @@ public interface SourceConnectionRepositoryPort {
     List<SourceConnection> findByProjectId(Long projectId);
     List<SourceConnection> findAll();
     Optional<SourceConnection> findById(Long id);
+    void deleteById(Long id);
 }

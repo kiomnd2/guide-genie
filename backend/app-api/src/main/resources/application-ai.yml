@@ -1,0 +1,19 @@
+# AI 활성화 프로파일: --spring.profiles.active=ai
+# Gemini API 키(Google AI Studio)를 OpenAI 호환 엔드포인트로 사용. docs/AI-SETUP.md
+# 사용 전: export GEMINI_API_KEY=<AI Studio 키>
+spring:
+  ai:
+    model:
+      chat: openai       # 기본 프로파일의 none을 덮어써 chat/embedding만 활성화
+      embedding: openai
+    openai:
+      api-key: ${GEMINI_API_KEY}
+      base-url: https://generativelanguage.googleapis.com/v1beta/openai
+      chat:
+        options:
+          model: gemini-flash-latest   # 이 키에서 gemini-2.5-flash는 신규 사용자 제한 → latest 별칭 사용
+          temperature: 0.2
+      embedding:
+        options:
+          model: gemini-embedding-001  # Gemini 임베딩 모델
+          dimensions: 768              # 스키마 vector(768)에 맞춰 축소
