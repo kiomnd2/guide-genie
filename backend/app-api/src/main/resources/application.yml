@@ -1,0 +1,42 @@
+spring:
+  application:
+    name: guide-genie-api
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/guidegenie}
+    username: ${DB_USERNAME:guidegenie}
+    password: ${DB_PASSWORD:guidegenie}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none          # 스키마는 Flyway가 소유
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+# 애플리케이션 커스텀 설정
+guidegenie:
+  security:
+    # 소스 연동 토큰 암호화 키(AES-256). 운영에서는 반드시 외부 주입(32바이트).
+    token-encryption-key: ${TOKEN_ENC_KEY:0123456789abcdef0123456789abcdef}
+  rag:
+    chunk-size: 800
+    chunk-overlap: 100
+    top-k: 6
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+
+server:
+  port: 8080
+
+logging:
+  level:
+    io.hz.guidegenie: DEBUG

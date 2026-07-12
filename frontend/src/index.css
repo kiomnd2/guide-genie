@@ -33,6 +33,10 @@ a {
   font-size: 18px;
 }
 
+.sidebar h1 a {
+  color: #fff;
+}
+
 .sidebar nav a {
   display: block;
   color: #d0d7de;
@@ -42,6 +46,22 @@ a {
 .sidebar nav a.active {
   color: #fff;
   font-weight: 600;
+}
+
+.sidebar-back {
+  font-size: 13px;
+  color: #8b949e !important;
+}
+
+.sidebar-project {
+  color: #fff;
+  font-weight: 600;
+  margin: 10px 0 4px;
+  padding-top: 10px;
+  border-top: 1px solid #3a4148;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .content {
@@ -67,10 +87,23 @@ button {
 }
 
 input,
-textarea {
+textarea,
+select {
   width: 100%;
   padding: 8px;
   border: 1px solid #d0d7de;
   border-radius: 6px;
   font: inherit;
+}
+
+.btn-sm {
+  padding: 3px 8px;
+  font-size: 12px;
+  background: #f6f8fa;
+  color: #24292f;
+  border: 1px solid #d0d7de;
+}
+
+.btn-danger {
+  color: #cf222e;
 }

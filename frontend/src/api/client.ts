@@ -1,17 +1,7 @@
-// API 클라이언트. 사내 SSO JWT(Bearer)를 첨부한다.
-// 스캐폴드: 토큰은 localStorage 에서 읽는다(실제 SSO 연동 시 교체).
-
-const TOKEN_KEY = 'gg_token'
-
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY)
-}
+// API 클라이언트. 인증(SSO/JWT)은 현재 미도입 — 별도 토큰 없이 호출한다.
 
 function headers(): HeadersInit {
-  const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  const token = getToken()
-  if (token) h.Authorization = `Bearer ${token}`
-  return h
+  return { 'Content-Type': 'application/json' }
 }
 
 async function handle<T>(res: Response): Promise<T> {
@@ -30,6 +20,9 @@ export const api = {
   put: <T>(path: string, body?: unknown) =>
     fetch(`/api${path}`, { method: 'PUT', headers: headers(), body: JSON.stringify(body ?? {}) })
       .then(handle<T>),
+  patch: <T>(path: string, body?: unknown) =>
+    fetch(`/api${path}`, { method: 'PATCH', headers: headers(), body: JSON.stringify(body ?? {}) })
+      .then(handle<T>),
   del: (path: string) =>
     fetch(`/api${path}`, { method: 'DELETE', headers: headers() }).then((r) => handle<void>(r)),
 }
@@ -43,12 +36,33 @@ export interface Project {
   owner: string
 }
 
+export interface Category {
+  id: number
+  parentId: number | null // null = 대분류
+  name: string
+}
+
 export interface Guide {
   id: number
   projectId: number
   title: string
+  categoryId: number | null
   status: 'DRAFT' | 'PUBLISHED'
   createdBy: string
+}
+
+export interface GuideInput {
+  title: string
+  categoryId: number | null
+  contentMd: string
+}
+
+export interface Revision {
+  id: number
+  version: number
+  contentMd: string
+  editedBy: string
+  createdAt: string
 }
 
 export interface Citation {
@@ -65,12 +79,54 @@ export const projectsApi = {
   get: (id: number) => api.get<Project>(`/projects/${id}`),
 }
 
+export interface TemplateItem {
+  title: string
+  prompt: string
+  categoryId: number | null
+}
+
+export interface GuideTemplate {
+  id: number
+  name: string
+  items: TemplateItem[]
+}
+
+export const templatesApi = {
+  list: (projectId: number) => api.get<GuideTemplate[]>(`/projects/${projectId}/templates`),
+  create: (projectId: number, name: string, items: TemplateItem[]) =>
+    api.post<GuideTemplate>(`/projects/${projectId}/templates`, { name, items }),
+  update: (projectId: number, id: number, name: string, items: TemplateItem[]) =>
+    api.put<GuideTemplate>(`/projects/${projectId}/templates/${id}`, { name, items }),
+  del: (projectId: number, id: number) => api.del(`/projects/${projectId}/templates/${id}`),
+  run: (projectId: number, id: number) =>
+    api.post<{ triggered: number }>(`/projects/${projectId}/templates/${id}/run`),
+}
+
+export const categoriesApi = {
+  list: (projectId: number) => api.get<Category[]>(`/projects/${projectId}/categories`),
+  create: (projectId: number, name: string, parentId: number | null) =>
+    api.post<Category>(`/projects/${projectId}/categories`, { name, parentId }),
+  rename: (projectId: number, id: number, name: string) =>
+    api.put<Category>(`/projects/${projectId}/categories/${id}`, { name }),
+  del: (projectId: number, id: number) => api.del(`/projects/${projectId}/categories/${id}`),
+}
+
 export const guidesApi = {
   list: (projectId: number) => api.get<Guide[]>(`/projects/${projectId}/guides`),
-  generate: (projectId: number, prompt: string) =>
-    api.post<{ jobId: string }>(`/projects/${projectId}/guides/generate`, { prompt }),
-  update: (projectId: number, guideId: number, title: string, contentMd: string) =>
-    api.put<Guide>(`/projects/${projectId}/guides/${guideId}`, { title, contentMd }),
+  move: (projectId: number, guideId: number, categoryId: number | null) =>
+    api.patch<Guide>(`/projects/${projectId}/guides/${guideId}/category`, { categoryId }),
+  get: (projectId: number, guideId: number) =>
+    api.get<Guide>(`/projects/${projectId}/guides/${guideId}`),
+  create: (projectId: number, input: GuideInput) =>
+    api.post<Guide>(`/projects/${projectId}/guides`, input),
+  update: (projectId: number, guideId: number, input: GuideInput) =>
+    api.put<Guide>(`/projects/${projectId}/guides/${guideId}`, input),
   publish: (projectId: number, guideId: number) =>
     api.post<Guide>(`/projects/${projectId}/guides/${guideId}/publish`),
+  generate: (projectId: number, prompt: string) =>
+    api.post<{ jobId: string }>(`/projects/${projectId}/guides/generate`, { prompt }),
+  // 현재 본문은 최신 리비전에서 로드한다(리비전은 version desc 정렬).
+  revisions: (guideId: number) => api.get<Revision[]>(`/guides/${guideId}/revisions`),
+  latestContent: (guideId: number) =>
+    api.get<Revision[]>(`/guides/${guideId}/revisions`).then((rs) => rs[0]?.contentMd ?? ''),
 }

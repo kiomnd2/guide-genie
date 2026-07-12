@@ -9,14 +9,15 @@ AI 사용 가이드 자동생성 서비스 — 프로젝트에 연동된 Jira ·
 
 ```
 [React SPA]  ──REST / SSE──▶  [Spring Boot API Server]
-                                 ├─ Auth (Spring Security + SSO[OIDC] + JWT)
                                  ├─ Project / Guide / Q&A API
                                  ├─ Connector (Jira · Confluence · GitHub)
                                  ├─ Sync Scheduler
                                  └─ AI Orchestrator (Spring AI)
                                         ├─ Gemini 2.5 Flash (생성/답변)
                                         └─ Gemini Embedding
-             [PostgreSQL + pgvector]   [Redis(캐시/세션)]
+             [PostgreSQL + pgvector]   [Redis(캐시)]
+
+* 인증(SSO/JWT)은 현재 미도입 — 모든 API는 인증 없이 접근 가능(수동 등록 위주).
 ```
 
 ## 기술 스택
@@ -24,25 +25,34 @@ AI 사용 가이드 자동생성 서비스 — 프로젝트에 연동된 Jira ·
 | 계층 | 기술 |
 |---|---|
 | Frontend | React 18, TypeScript, Vite, react-markdown, CodeMirror |
-| Backend | Java 21, Spring Boot 3.x, Spring AI |
-| LLM / Embedding | Gemini 2.5 Flash / Gemini Embedding (Vertex AI) |
-| DB | PostgreSQL + pgvector 단일 구성 |
-| 캐시/세션 | Redis |
-| 인증 | 사내 SSO(OIDC) + Spring Security + JWT |
+| Backend | Java 21, Spring Boot 3.4.1, Gradle 멀티모듈(Kotlin DSL) |
+| 아키텍처 | 모듈러 모놀리스 + 헥사고날(Level 1) — `docs/ARCHITECTURE.md` |
+| LLM / Embedding | Gemini 2.5 Flash / pgvector (예정, 현재 스캐폴드) |
+| DB | PostgreSQL + pgvector |
+| 인증 | 미도입 (추후 사내 SSO(OIDC) 연동 예정) |
 
 ## 디렉토리 구조
 
 ```
 guide-genie/
-├── backend/     Spring Boot API 서버
-├── frontend/    React SPA
-├── docker-compose.yml   Postgres(pgvector) · Redis
-└── README.md
+├── backend/       Gradle 멀티모듈 (루트)
+│   ├── common/            공통(BaseTimeEntity, TokenCipher …)
+│   ├── domain-project/    프로젝트
+│   ├── domain-rag/        임베딩/검색 (IndexPort·SearchPort)
+│   ├── domain-guide/      가이드 + 리비전 + 분류 + AI 생성
+│   ├── domain-source/     소스 연동 + 수집 + 커넥터
+│   ├── domain-qna/        Q&A
+│   ├── app-api/           REST + Flyway (스키마 소유)
+│   └── app-worker/        동기화 스케줄러(비웹)
+├── frontend/      React SPA
+├── docs/ARCHITECTURE.md
+├── CLAUDE.md
+└── docker-compose.yml
 ```
 
 ## 로컬 실행
 
-### 1. 인프라 (Postgres + Redis)
+### 1. 인프라 (Postgres + pgvector)
 
 ```bash
 docker compose up -d
@@ -50,24 +60,24 @@ docker compose up -d
 
 Postgres는 `pgvector/pgvector:pg16` 이미지를 사용해 `vector` 확장이 활성화됩니다.
 
-### 2. 백엔드
+### 2. 백엔드 (Gradle 루트 = `backend/`)
 
 ```bash
 cd backend
-./gradlew bootRun
-# http://localhost:8080  (Swagger: /swagger-ui.html)
+./gradlew :app-api:bootRun        # API 서버 :8080 (Swagger: /swagger-ui.html)
+./gradlew :app-worker:bootRun     # (선택) 동기화 워커
 ```
 
-환경변수(또는 `application-local.yml`)로 다음을 설정하세요:
+> 인증은 아직 없습니다. 모든 API에 인증 없이 접근할 수 있고, 감사 필드(created_by 등)는 `anonymous`로 기록됩니다.
+
+환경변수로 다음을 설정할 수 있습니다(모두 기본값 있음):
 
 ```
-GOOGLE_CLOUD_PROJECT       Vertex AI 프로젝트 ID
-GOOGLE_CLOUD_LOCATION      예) us-central1
 DB_URL / DB_USERNAME / DB_PASSWORD
-TOKEN_ENC_KEY              토큰/시크릿 암호화 키(AES-256, 32바이트)
+TOKEN_ENC_KEY              소스 연동 토큰 암호화 키(AES-256, 32바이트)
+GOOGLE_CLOUD_PROJECT       Vertex AI 프로젝트 ID (AI 기능 사용 시)
+GOOGLE_CLOUD_LOCATION      예) us-central1 (AI 기능 사용 시)
 ```
-
-> SSO는 `application.yml`에 고정하지 않고 **DB에서 동적으로 관리**합니다. 아래 참조.
 
 ### 3. 프론트엔드
 
@@ -77,53 +87,6 @@ npm install
 npm run dev
 # http://localhost:5173  (→ /api 는 8080으로 프록시)
 ```
-
-## 동적 SSO(OIDC) 설정
-
-SSO provider를 `application.yml`에 고정하지 않고 **DB(`sso_provider`)에서 런타임에 추가/수정**합니다.
-변경은 재배포 없이 즉시 로그인·API 인증에 반영됩니다.
-
-- **로그인(OAuth2 Client)**: `DynamicClientRegistrationRepository` — `registrationId`로 DB 조회 후
-  issuer의 OIDC discovery로 `ClientRegistration`을 구성(캐시).
-- **API 인증(Resource Server)**: `DynamicJwtAuthenticationManagerResolver` — 토큰의 `iss`를
-  DB 신뢰 목록과 대조해 issuer별 JWT 검증기를 선택(캐시). 목록 밖 issuer는 거부.
-- 캐시는 provider 변경 시 자동 무효화됩니다.
-
-### 관리 API
-
-| Method | Endpoint | 설명 |
-|---|---|---|
-| POST | `/api/admin/sso-providers` | provider 등록 |
-| GET | `/api/admin/sso-providers` | 목록(시크릿 제외) |
-| PUT | `/api/admin/sso-providers/{id}` | 수정(secret 미입력 시 기존 유지) |
-| DELETE | `/api/admin/sso-providers/{id}` | 삭제 |
-
-등록 예시:
-
-```json
-{
-  "registrationId": "corp-sso",
-  "displayName": "사내 SSO",
-  "issuerUri": "https://sso.example.com",
-  "clientId": "guide-genie",
-  "clientSecret": "••••••",
-  "scopes": "openid,profile,email"
-}
-```
-
-client secret은 AES-256으로 암호화 저장되며 응답에 절대 노출되지 않습니다.
-
-### 최초 부트스트랩 (chicken-and-egg)
-
-관리 API도 인증이 필요하므로, **첫 provider는 DB에 직접 삽입**해 부트스트랩합니다:
-
-```sql
-INSERT INTO sso_provider (registration_id, display_name, issuer_uri, client_id, scopes, enabled)
-VALUES ('corp-sso', '사내 SSO', 'https://sso.example.com', 'guide-genie', 'openid,profile,email', true);
-```
-
-> secret이 필요한 로그인 흐름이면 `encrypted_client_secret`에 `TokenCipher`로 암호화한 값을 넣거나,
-> 등록 후 `PUT`으로 갱신하세요. 운영에서는 `/api/admin/**`를 관리자 롤로 제한(`@PreAuthorize`)하는 것을 권장합니다.
 
 ## 구현 현황
 
