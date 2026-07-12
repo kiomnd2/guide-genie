@@ -95,11 +95,16 @@ export const templatesApi = {
   list: (projectId: number) => api.get<GuideTemplate[]>(`/projects/${projectId}/templates`),
   create: (projectId: number, name: string, items: TemplateItem[]) =>
     api.post<GuideTemplate>(`/projects/${projectId}/templates`, { name, items }),
+  auto: (projectId: number) =>
+    api.post<GuideTemplate>(`/projects/${projectId}/templates/auto`),
   update: (projectId: number, id: number, name: string, items: TemplateItem[]) =>
     api.put<GuideTemplate>(`/projects/${projectId}/templates/${id}`, { name, items }),
   del: (projectId: number, id: number) => api.del(`/projects/${projectId}/templates/${id}`),
   run: (projectId: number, id: number) =>
-    api.post<{ triggered: number }>(`/projects/${projectId}/templates/${id}/run`),
+    api.post<{ jobId: string; total: number }>(`/projects/${projectId}/templates/${id}/run`),
+  runStatus: (projectId: number, jobId: string) =>
+    api.get<{ total: number; done: number; failed: number; finished: boolean }>(
+      `/projects/${projectId}/templates/runs/${jobId}`),
 }
 
 export const categoriesApi = {

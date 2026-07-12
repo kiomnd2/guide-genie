@@ -2,9 +2,13 @@ package io.hz.guidegenie.api.template;
 
 import io.hz.guidegenie.common.SecurityUtils;
 import io.hz.guidegenie.guide.application.service.CategoryService;
+import io.hz.guidegenie.guide.application.service.GenerationJobTracker;
 import io.hz.guidegenie.guide.application.service.GuideTemplateService;
+import io.hz.guidegenie.guide.application.service.GuideTemplateService.RunHandle;
 import io.hz.guidegenie.guide.domain.GuideTemplate;
 import io.hz.guidegenie.guide.domain.TemplateItem;
+import io.hz.guidegenie.source.application.service.SourceConnectionService;
+import io.hz.guidegenie.source.domain.SourceConnection;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.util.List;
@@ -28,6 +32,8 @@ public class TemplateController {
 
     private final GuideTemplateService templateService;
     private final CategoryService categoryService;
+    private final SourceConnectionService connectionService;
+    private final GenerationJobTracker jobTracker;
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -35,6 +41,19 @@ public class TemplateController {
         validateCategories(projectId, req);
         return Response.from(templateService.create(
             projectId, req.name(), toItems(req), SecurityUtils.currentUser()));
+    }
+
+    /** 연동 정보 기준 템플릿 자동 생성 — 등록된 소스별 추천 항목으로 템플릿을 만든다. */
+    @PostMapping("/auto")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Response auto(@PathVariable Long projectId) {
+        List<SourceConnection> connections = connectionService.findByProject(projectId);
+        List<TemplateItem> items = ConnectionTemplatePresets.build(connections);
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("연동된 소스가 없습니다. 먼저 소스를 연동한 뒤 자동 생성하세요.");
+        }
+        return Response.from(templateService.create(
+            projectId, "연동 기반 가이드 세트 (자동)", items, SecurityUtils.currentUser()));
     }
 
     @GetMapping
@@ -60,11 +79,18 @@ public class TemplateController {
         templateService.delete(templateId);
     }
 
-    /** 일괄 생성 실행(비동기). 트리거된 항목 수 반환. */
+    /** 일괄 생성 실행(비동기). 진행 조회용 jobId + 총 항목 수 반환. */
     @PostMapping("/{templateId}/run")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public RunResult run(@PathVariable Long projectId, @PathVariable Long templateId) {
-        return new RunResult(templateService.run(templateId, SecurityUtils.currentUser()));
+    public RunHandle run(@PathVariable Long projectId, @PathVariable Long templateId) {
+        return templateService.run(templateId, SecurityUtils.currentUser());
+    }
+
+    /** 일괄 생성 진행 상황 조회(폴링). */
+    @GetMapping("/runs/{jobId}")
+    public GenerationJobTracker.Progress runStatus(@PathVariable Long projectId,
+                                                   @PathVariable String jobId) {
+        return jobTracker.snapshot(jobId);
     }
 
     private void validateCategories(Long projectId, UpsertRequest req) {
@@ -85,8 +111,6 @@ public class TemplateController {
     public record ItemDto(@NotBlank String title, @NotBlank String prompt, Long categoryId) {}
 
     public record UpsertRequest(@NotBlank String name, List<ItemDto> items) {}
-
-    public record RunResult(int triggered) {}
 
     public record Response(Long id, String name, List<ItemDto> items) {
         static Response from(GuideTemplate t) {

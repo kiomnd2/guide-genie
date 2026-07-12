@@ -5,6 +5,7 @@ import io.hz.guidegenie.guide.application.port.out.GuideTemplateRepositoryPort;
 import io.hz.guidegenie.guide.domain.GuideTemplate;
 import io.hz.guidegenie.guide.domain.TemplateItem;
 import java.util.List;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -16,8 +17,12 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GuideTemplateService {
 
+    /** 일괄 실행 접수 결과 — 진행 조회용 jobId + 총 항목 수. */
+    public record RunHandle(String jobId, int total) {}
+
     private final GuideTemplateRepositoryPort repository;
     private final GuideGenerationService generationService;
+    private final GenerationJobTracker jobTracker;
 
     @Transactional
     public GuideTemplate create(Long projectId, String name, List<TemplateItem> items, String author) {
@@ -49,16 +54,18 @@ public class GuideTemplateService {
 
     /**
      * 템플릿 일괄 실행 — 항목마다 가이드 초안을 비동기 생성한다.
-     * @return 트리거된 항목 수
+     * @return 진행 조회용 jobId + 총 항목 수
      */
-    public int run(Long id, String author) {
+    public RunHandle run(Long id, String author) {
         GuideTemplate template = get(id);
         List<TemplateItem> items = template.getItems();
+        String jobId = UUID.randomUUID().toString();
+        jobTracker.start(jobId, items.size());
         for (TemplateItem item : items) {
             generationService.generateOne(
-                template.getProjectId(), item.title(), item.categoryId(), item.prompt(), author);
+                template.getProjectId(), item.title(), item.categoryId(), item.prompt(), author, jobId);
         }
-        log.info("[Template] run id={} → {} items triggered", id, items.size());
-        return items.size();
+        log.info("[Template] run id={} job={} → {} items triggered", id, jobId, items.size());
+        return new RunHandle(jobId, items.size());
     }
 }

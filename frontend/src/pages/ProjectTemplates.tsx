@@ -26,6 +26,13 @@ export default function ProjectTemplates() {
   const [error, setError] = useState<string>()
   const busy = useRef(false)
 
+  // 일괄 생성 진행률
+  const [progress, setProgress] = useState<
+    { name: string; total: number; done: number; failed: number; finished: boolean } | null
+  >(null)
+  const pollRef = useRef<number | null>(null)
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+
   // 분류 생성 입력
   const [newMajor, setNewMajor] = useState('')
   const [minorParent, setMinorParent] = useState<number | null>(null)
@@ -60,6 +67,14 @@ export default function ProjectTemplates() {
     load()
   })
 
+  const autoFromConnections = () => guard(async () => {
+    setMsg(undefined)
+    const t = await templatesApi.auto(pid)
+    load()
+    startEdit(t)
+    setMsg(`연동 기준으로 "${t.name}" 템플릿을 생성했습니다 (${t.items.length}개 항목). 검토·분류 지정 후 저장하세요.`)
+  })
+
   const startNew = () => { setMsg(undefined); setDraft({ id: null, name: '', items: [emptyItem()] }) }
   const startEdit = (t: GuideTemplate) => {
     setMsg(undefined)
@@ -90,8 +105,24 @@ export default function ProjectTemplates() {
   })
 
   const run = (t: GuideTemplate) => guard(async () => {
-    const res = await templatesApi.run(pid, t.id)
-    setMsg(`"${t.name}" 실행: ${res.triggered}개 초안 생성을 시작했습니다. 「가이드」 탭에 나타납니다.`)
+    setMsg(undefined)
+    const { jobId, total } = await templatesApi.run(pid, t.id)
+    if (pollRef.current) clearInterval(pollRef.current)
+    if (total === 0) {
+      setProgress({ name: t.name, total: 0, done: 0, failed: 0, finished: true })
+      return
+    }
+    setProgress({ name: t.name, total, done: 0, failed: 0, finished: false })
+    pollRef.current = window.setInterval(async () => {
+      try {
+        const s = await templatesApi.runStatus(pid, jobId)
+        setProgress({ name: t.name, total: s.total || total, done: s.done, failed: s.failed, finished: s.finished })
+        if (s.finished && pollRef.current) {
+          clearInterval(pollRef.current)
+          pollRef.current = null
+        }
+      } catch { /* 폴링 계속 */ }
+    }, 1500)
   })
 
   const remove = (t: GuideTemplate) => guard(async () => {
@@ -111,6 +142,30 @@ export default function ProjectTemplates() {
       </p>
       {error && <div className="card" style={{ color: '#cf222e' }}>{error}</div>}
       {msg && <div className="card" style={{ color: '#1a7f37' }}>{msg}</div>}
+
+      {progress && (
+        <div className="card">
+          <div style={{ fontWeight: 600 }}>
+            「{progress.name}」 일괄 생성 {progress.finished ? '완료' : '진행 중…'}
+            {' '}— {progress.done + progress.failed}/{progress.total}
+            {progress.failed > 0 && <span style={{ color: '#cf222e' }}> (실패 {progress.failed})</span>}
+          </div>
+          <div style={{ background: '#eaeef2', borderRadius: 6, height: 10, marginTop: 6, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%',
+              width: `${progress.total ? Math.round(((progress.done + progress.failed) / progress.total) * 100) : 100}%`,
+              background: progress.finished ? '#1f883d' : '#0969da',
+              transition: 'width .3s',
+            }} />
+          </div>
+          {progress.finished && (
+            <div style={{ marginTop: 6, fontSize: 13, color: '#57606a' }}>
+              생성된 초안은 「가이드」 탭에서 확인하세요.{' '}
+              <button className="btn-sm" onClick={() => setProgress(null)}>닫기</button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 분류 관리 — 여기서 만든 분류를 아래 항목의 「분류」에서 바로 선택 */}
       <div className="card">
@@ -149,8 +204,10 @@ export default function ProjectTemplates() {
       </div>
 
       {!draft && (
-        <div className="card">
+        <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <button onClick={startNew}>+ 새 템플릿</button>
+          <button style={{ background: '#8250df' }} onClick={autoFromConnections}>⚙ 연동 기준 자동 생성</button>
+          <span style={{ color: '#57606a', fontSize: 12 }}>등록된 소스 연동으로 추천 항목을 채운 템플릿을 만듭니다.</span>
         </div>
       )}
 

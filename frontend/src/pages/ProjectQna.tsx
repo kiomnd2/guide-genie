@@ -48,11 +48,12 @@ export default function ProjectQna() {
   }
 
   const handleEvent = (evt: string) => {
-    const nameLine = evt.split('\n').find((l) => l.startsWith('event:'))
-    const dataLine = evt.split('\n').find((l) => l.startsWith('data:'))
-    if (!dataLine) return
-    const name = nameLine?.slice(6).trim()
-    const data = dataLine.slice(5).trim()
+    const lines = evt.split('\n')
+    const name = lines.find((l) => l.startsWith('event:'))?.slice(6).trim()
+    // SSE는 값의 줄바꿈마다 data: 라인을 분리한다 → 모두 모아 \n으로 복원
+    const dataLines = lines.filter((l) => l.startsWith('data:')).map((l) => l.slice(5))
+    if (dataLines.length === 0) return
+    const data = name === 'token' ? dataLines.join('\n') : dataLines.join('\n').trim()
     if (name === 'token') {
       setMessages((m) => {
         const copy = [...m]

@@ -13,6 +13,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 > 참조 문서 (새 작업 전 확인):
 > - `docs/ARCHITECTURE.md` — 모듈러 모놀리스 + 헥사고날 컨벤션
 > - `docs/AI-INTEGRATION.md` — RAG 파이프라인(수집→색인→검색→생성), 포트 연결, 미구현 TODO
+> - `docs/AI-SETUP.md` — Spring AI(Vertex Gemini + pgvector) 실전 셋업 런북(TODO 3지점 구현)
 
 ## 빌드 · 테스트 · 실행
 

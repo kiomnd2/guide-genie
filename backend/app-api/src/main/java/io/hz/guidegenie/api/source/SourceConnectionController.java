@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,6 +42,12 @@ public class SourceConnectionController {
     @ResponseStatus(HttpStatus.ACCEPTED)
     public void sync(@PathVariable Long projectId, @PathVariable Long cid) {
         connectionService.triggerSync(cid);
+    }
+
+    @DeleteMapping("/{cid}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long projectId, @PathVariable Long cid) {
+        connectionService.delete(cid);
     }
 
     public record CreateRequest(@NotNull SourceType type, @NotNull Map<String, Object> config,

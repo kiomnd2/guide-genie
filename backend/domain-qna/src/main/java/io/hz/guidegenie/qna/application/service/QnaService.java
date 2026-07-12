@@ -7,9 +7,11 @@ import io.hz.guidegenie.qna.domain.Citation;
 import io.hz.guidegenie.qna.domain.MessageRole;
 import io.hz.guidegenie.qna.domain.QnaMessage;
 import io.hz.guidegenie.qna.domain.QnaSession;
+import io.hz.guidegenie.rag.application.port.in.GenerationPort;
 import io.hz.guidegenie.rag.application.port.in.RetrievedChunk;
 import io.hz.guidegenie.rag.application.port.in.SearchPort;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,11 +32,10 @@ public class QnaService {
     private final QnaSessionRepositoryPort sessionRepository;
     private final QnaMessageRepositoryPort messageRepository;
     private final SearchPort ragSearch;
+    private final GenerationPort generation;
 
     @Value("${guidegenie.rag.top-k}")
     private int topK;
-
-    // TODO: private final ChatModel chatModel; (Spring AI Vertex AI Gemini)
 
     @Transactional
     public QnaSession getOrCreateSession(Long projectId, Long sessionId, String userId) {
@@ -57,11 +58,26 @@ public class QnaService {
         }
 
         List<Citation> citations = toCitations(chunks);
-        // TODO: chatModel.call(prompt(question, chunks)) → 답변 생성(스트리밍 시 어댑터에서 토큰 처리)
-        String answer = "TODO: Gemini 2.5 Flash 답변";
+        String answer = generation.enabled()
+            ? generation.generate(buildPrompt(question, chunks))
+            : "관련 근거 " + chunks.size() + "건을 찾았습니다. (AI 미설정 — 'ai' 프로파일로 실행 시 답변 생성. docs/AI-SETUP.md)";
         QnaMessage saved = messageRepository.save(
             new QnaMessage(session.getId(), MessageRole.ASSISTANT, answer, citations));
         return new QnaAnswer(session.getId(), saved.getId(), answer, citations);
+    }
+
+    private String buildPrompt(String question, List<RetrievedChunk> chunks) {
+        String ctx = chunks.stream().map(RetrievedChunk::chunkText)
+            .collect(Collectors.joining("\n---\n"));
+        return """
+            아래 [컨텍스트]만 근거로 질문에 한국어로 답해라. 컨텍스트에 답이 없으면 "가이드에서 답을 찾을 수 없습니다"라고만 답해라.
+
+            [질문]
+            %s
+
+            [컨텍스트]
+            %s
+            """.formatted(question, ctx);
     }
 
     @Transactional

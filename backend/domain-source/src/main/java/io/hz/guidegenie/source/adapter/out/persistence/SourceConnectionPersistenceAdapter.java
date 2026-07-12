@@ -32,4 +32,9 @@ public class SourceConnectionPersistenceAdapter implements SourceConnectionRepos
     public Optional<SourceConnection> findById(Long id) {
         return jpa.findById(id);
     }
+
+    @Override
+    public void deleteById(Long id) {
+        jpa.deleteById(id);
+    }
 }
