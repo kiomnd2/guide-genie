@@ -40,6 +40,7 @@ function ProjectNav({ projectId, projectName, pathname }: {
 }) {
   const base = `/projects/${projectId}`
   const isGuides = pathname === base || pathname.startsWith(`${base}/guides`)
+  const isTemplates = pathname.startsWith(`${base}/templates`)
   const isSources = pathname.startsWith(`${base}/sources`)
   const isQna = pathname.startsWith(`${base}/qna`)
 
@@ -48,6 +49,7 @@ function ProjectNav({ projectId, projectName, pathname }: {
       <Link to="/" className="sidebar-back">← 프로젝트 목록</Link>
       <div className="sidebar-project" title={projectName}>{projectName ?? `프로젝트 #${projectId}`}</div>
       <Link className={isGuides ? 'active' : ''} to={base}>가이드</Link>
+      <Link className={isTemplates ? 'active' : ''} to={`${base}/templates`}>템플릿</Link>
       <Link className={isSources ? 'active' : ''} to={`${base}/sources`}>소스 연동</Link>
       <Link className={isQna ? 'active' : ''} to={`${base}/qna`}>Q&amp;A</Link>
     </nav>

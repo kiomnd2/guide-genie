@@ -10,7 +10,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **프론트엔드**: React 18 · TypeScript · Vite (`frontend/`)
 - **LLM/RAG**: Gemini 2.5 Flash + pgvector (예정 — 현재 스캐폴드, `domain-rag`의 `// TODO`)
 
-> 아키텍처 컨벤션 상세는 `docs/ARCHITECTURE.md`. 새 백엔드 작업 전 반드시 확인.
+> 참조 문서 (새 작업 전 확인):
+> - `docs/ARCHITECTURE.md` — 모듈러 모놀리스 + 헥사고날 컨벤션
+> - `docs/AI-INTEGRATION.md` — RAG 파이프라인(수집→색인→검색→생성), 포트 연결, 미구현 TODO
 
 ## 빌드 · 테스트 · 실행
 

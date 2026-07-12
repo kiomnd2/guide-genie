@@ -79,6 +79,29 @@ export const projectsApi = {
   get: (id: number) => api.get<Project>(`/projects/${id}`),
 }
 
+export interface TemplateItem {
+  title: string
+  prompt: string
+  categoryId: number | null
+}
+
+export interface GuideTemplate {
+  id: number
+  name: string
+  items: TemplateItem[]
+}
+
+export const templatesApi = {
+  list: (projectId: number) => api.get<GuideTemplate[]>(`/projects/${projectId}/templates`),
+  create: (projectId: number, name: string, items: TemplateItem[]) =>
+    api.post<GuideTemplate>(`/projects/${projectId}/templates`, { name, items }),
+  update: (projectId: number, id: number, name: string, items: TemplateItem[]) =>
+    api.put<GuideTemplate>(`/projects/${projectId}/templates/${id}`, { name, items }),
+  del: (projectId: number, id: number) => api.del(`/projects/${projectId}/templates/${id}`),
+  run: (projectId: number, id: number) =>
+    api.post<{ triggered: number }>(`/projects/${projectId}/templates/${id}/run`),
+}
+
 export const categoriesApi = {
   list: (projectId: number) => api.get<Category[]>(`/projects/${projectId}/categories`),
   create: (projectId: number, name: string, parentId: number | null) =>
