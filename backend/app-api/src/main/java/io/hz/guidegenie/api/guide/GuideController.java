@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -60,6 +61,12 @@ public class GuideController {
     @PostMapping("/{guideId}/publish")
     public Response publish(@PathVariable Long projectId, @PathVariable Long guideId) {
         return Response.from(guideService.publish(guideId));
+    }
+
+    @DeleteMapping("/{guideId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable Long projectId, @PathVariable Long guideId) {
+        guideService.delete(guideId);
     }
 
     /** 분류 이동(드래그 앤 드롭). categoryId=null → 미분류. */

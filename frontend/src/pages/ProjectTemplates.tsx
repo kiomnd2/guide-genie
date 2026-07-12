@@ -26,6 +26,11 @@ export default function ProjectTemplates() {
   const [error, setError] = useState<string>()
   const busy = useRef(false)
 
+  // 분류 생성 입력
+  const [newMajor, setNewMajor] = useState('')
+  const [minorParent, setMinorParent] = useState<number | null>(null)
+  const [newMinor, setNewMinor] = useState('')
+
   const load = useCallback(() => {
     templatesApi.list(pid).then(setTemplates).catch((e) => setError(String(e)))
     categoriesApi.list(pid).then(setCategories).catch(() => {})
@@ -38,6 +43,22 @@ export default function ProjectTemplates() {
     busy.current = true
     try { await fn() } catch (e) { setError(String(e)) } finally { busy.current = false }
   }
+
+  // ---- 분류 생성(템플릿 화면에서 바로) ----
+  const addMajor = () => guard(async () => {
+    const name = newMajor.trim()
+    if (!name) return
+    setNewMajor('')
+    await categoriesApi.create(pid, name, null)
+    load()
+  })
+  const addMinor = () => guard(async () => {
+    const name = newMinor.trim()
+    if (!name || minorParent == null) return
+    setNewMinor('')
+    await categoriesApi.create(pid, name, minorParent)
+    load()
+  })
 
   const startNew = () => { setMsg(undefined); setDraft({ id: null, name: '', items: [emptyItem()] }) }
   const startEdit = (t: GuideTemplate) => {
@@ -79,6 +100,9 @@ export default function ProjectTemplates() {
     load()
   })
 
+  const majors = categories.filter((c) => c.parentId === null)
+  const childrenOf = (id: number) => categories.filter((c) => c.parentId === id)
+
   return (
     <div>
       <h2>템플릿</h2>
@@ -87,6 +111,42 @@ export default function ProjectTemplates() {
       </p>
       {error && <div className="card" style={{ color: '#cf222e' }}>{error}</div>}
       {msg && <div className="card" style={{ color: '#1a7f37' }}>{msg}</div>}
+
+      {/* 분류 관리 — 여기서 만든 분류를 아래 항목의 「분류」에서 바로 선택 */}
+      <div className="card">
+        <strong style={{ fontSize: 14 }}>분류 관리</strong>
+        <div style={{ color: '#57606a', fontSize: 12, margin: '2px 0 8px' }}>
+          대분류/중분류를 여기서 바로 만들 수 있습니다. 항목의 「분류」 선택에 반영됩니다.
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+          <input placeholder="새 대분류 이름" value={newMajor}
+            onChange={(e) => setNewMajor(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addMajor() }} />
+          <button className="btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={addMajor}>+ 대분류</button>
+        </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <select value={minorParent ?? ''} style={{ maxWidth: 200 }}
+            onChange={(e) => setMinorParent(e.target.value === '' ? null : Number(e.target.value))}>
+            <option value="">대분류 선택</option>
+            {majors.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          </select>
+          <input placeholder="새 중분류 이름" value={newMinor}
+            onChange={(e) => setNewMinor(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) addMinor() }} />
+          <button className="btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={addMinor}
+            disabled={minorParent == null}>+ 중분류</button>
+        </div>
+        {majors.length > 0 && (
+          <div style={{ marginTop: 8, fontSize: 12, color: '#57606a' }}>
+            {majors.map((m) => (
+              <div key={m.id}>
+                <b>{m.name}</b>
+                {childrenOf(m.id).length > 0 && ' › ' + childrenOf(m.id).map((c) => c.name).join(', ')}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {!draft && (
         <div className="card">

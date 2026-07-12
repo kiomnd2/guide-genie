@@ -69,6 +69,14 @@ public class GuideService {
         return guide;
     }
 
+    /** 가이드 삭제 — RAG 색인 제거 + 가이드 삭제(리비전은 DB FK CASCADE로 함께 삭제). */
+    @Transactional
+    public void delete(Long guideId) {
+        Guide guide = get(guideId); // 존재 검증(없으면 404)
+        ragIndex.removeByRef(RefType.GUIDE, guide.getId());
+        guideRepository.deleteById(guide.getId());
+    }
+
     @Transactional(readOnly = true)
     public List<GuideRevision> revisions(Long guideId) {
         return revisionRepository.findByGuideIdOrderByVersionDesc(guideId);

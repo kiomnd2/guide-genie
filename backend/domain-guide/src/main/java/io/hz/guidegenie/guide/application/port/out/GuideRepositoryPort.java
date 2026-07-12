@@ -8,4 +8,5 @@ public interface GuideRepositoryPort {
     Guide save(Guide guide);
     List<Guide> findByProjectId(Long projectId);
     Optional<Guide> findById(Long id);
+    void deleteById(Long id);
 }

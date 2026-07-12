@@ -90,6 +90,20 @@ export default function ProjectGuides() {
     loadGuides()
   })
 
+  const deleteGuide = (g: Guide) => guard(async () => {
+    if (!confirm(`가이드 "${g.title}"을(를) 삭제할까요? 되돌릴 수 없습니다.`)) return
+    await guidesApi.del(pid, g.id)
+    loadGuides()
+  })
+
+  const clearUncategorized = () => guard(async () => {
+    const targets = guidesIn(null)
+    if (targets.length === 0) return
+    if (!confirm(`미분류 가이드 ${targets.length}개를 모두 삭제할까요? 되돌릴 수 없습니다.`)) return
+    await Promise.all(targets.map((g) => guidesApi.del(pid, g.id)))
+    loadGuides()
+  })
+
   // ---- 드래그 앤 드롭 ----
   const onDragStart = (e: DragEvent, guideId: number) => {
     e.dataTransfer.setData('text/plain', String(guideId))
@@ -199,7 +213,7 @@ export default function ProjectGuides() {
             </div>
           )}
 
-          <GuideList guides={guidesIn(major.id)} pid={pid} onDragStart={onDragStart} />
+          <GuideList guides={guidesIn(major.id)} pid={pid} onDragStart={onDragStart} onDelete={deleteGuide} />
 
           {minorsOf(major.id).map((minor) => (
             <div key={minor.id} {...dropProps(`n${minor.id}`, minor.id, { marginLeft: 14, marginTop: 6 })}>
@@ -223,7 +237,7 @@ export default function ProjectGuides() {
                   )}
                 </span>
               </div>
-              <GuideList guides={guidesIn(minor.id)} pid={pid} onDragStart={onDragStart} />
+              <GuideList guides={guidesIn(minor.id)} pid={pid} onDragStart={onDragStart} onDelete={deleteGuide} />
             </div>
           ))}
         </div>
@@ -231,8 +245,13 @@ export default function ProjectGuides() {
 
       {/* 미분류 */}
       <div className="card" {...dropProps('uncat', null)}>
-        <strong style={{ color: '#57606a' }}>미분류</strong>
-        <GuideList guides={guidesIn(null)} pid={pid} onDragStart={onDragStart} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <strong style={{ color: '#57606a' }}>미분류</strong>
+          {guidesIn(null).length > 0 && (
+            <button className="btn-sm btn-danger" onClick={clearUncategorized}>비우기</button>
+          )}
+        </div>
+        <GuideList guides={guidesIn(null)} pid={pid} onDragStart={onDragStart} onDelete={deleteGuide} />
       </div>
     </div>
   )
@@ -257,10 +276,11 @@ function RenameInput({ editing, setEditing, onSubmit }: {
   )
 }
 
-function GuideList({ guides, pid, onDragStart }: {
+function GuideList({ guides, pid, onDragStart, onDelete }: {
   guides: Guide[]
   pid: number
   onDragStart: (e: DragEvent, guideId: number) => void
+  onDelete: (g: Guide) => void
 }) {
   if (guides.length === 0) {
     return <div style={{ color: '#8b949e', fontSize: 13, padding: '6px 0' }}>여기로 가이드를 끌어다 놓으세요</div>
@@ -283,6 +303,13 @@ function GuideList({ guides, pid, onDragStart }: {
             {g.title}
           </Link>
           <StatusBadge status={g.status} />
+          <button
+            className="btn-sm btn-danger"
+            title="삭제"
+            onClick={(e) => { e.preventDefault(); onDelete(g) }}
+          >
+            삭제
+          </button>
         </li>
       ))}
     </ul>

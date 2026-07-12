@@ -123,6 +123,8 @@ export const guidesApi = {
     api.put<Guide>(`/projects/${projectId}/guides/${guideId}`, input),
   publish: (projectId: number, guideId: number) =>
     api.post<Guide>(`/projects/${projectId}/guides/${guideId}/publish`),
+  del: (projectId: number, guideId: number) =>
+    api.del(`/projects/${projectId}/guides/${guideId}`),
   generate: (projectId: number, prompt: string) =>
     api.post<{ jobId: string }>(`/projects/${projectId}/guides/generate`, { prompt }),
   // 현재 본문은 최신 리비전에서 로드한다(리비전은 version desc 정렬).
