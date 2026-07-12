@@ -27,4 +27,9 @@ public class GuidePersistenceAdapter implements GuideRepositoryPort {
     public Optional<Guide> findById(Long id) {
         return jpa.findById(id);
     }
+
+    @Override
+    public void deleteById(Long id) {
+        jpa.deleteById(id);
+    }
 }
