@@ -62,8 +62,7 @@ public class GuideTemplateService {
         String jobId = UUID.randomUUID().toString();
         jobTracker.start(jobId, items.size());
         for (TemplateItem item : items) {
-            generationService.generateOne(
-                template.getProjectId(), item.title(), item.categoryId(), item.prompt(), author, jobId);
+            generationService.generateOne(template.getProjectId(), item, author, jobId);
         }
         log.info("[Template] run id={} job={} → {} items triggered", id, jobId, items.size());
         return new RunHandle(jobId, items.size());

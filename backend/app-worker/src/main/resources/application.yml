@@ -35,6 +35,10 @@ guidegenie:
   rag:
     chunk-size: 800
     chunk-overlap: 100
+  github:
+    # 저장소 본문 수집 상한(상세 가이드 근거). 문서 > 설정 > 소스 순으로 선별.
+    max-files: 40
+    max-file-bytes: 100000
   sync:
     # 증분 동기화 주기(cron). 기본 매시 정각.
     cron: ${SYNC_CRON:0 0 * * * *}

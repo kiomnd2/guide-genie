@@ -5,6 +5,7 @@ import io.hz.guidegenie.guide.application.service.CategoryService;
 import io.hz.guidegenie.guide.application.service.GenerationJobTracker;
 import io.hz.guidegenie.guide.application.service.GuideTemplateService;
 import io.hz.guidegenie.guide.application.service.GuideTemplateService.RunHandle;
+import io.hz.guidegenie.guide.domain.DetailLevel;
 import io.hz.guidegenie.guide.domain.GuideTemplate;
 import io.hz.guidegenie.guide.domain.TemplateItem;
 import io.hz.guidegenie.source.application.service.SourceConnectionService;
@@ -56,6 +57,20 @@ public class TemplateController {
             projectId, "연동 기반 가이드 세트 (자동)", items, SecurityUtils.currentUser()));
     }
 
+    /** GitHub 기준 운영 인수인계 RUNBOOK 세트 자동 생성 — 챕터별 상세 항목으로 템플릿을 만든다. */
+    @PostMapping("/runbook")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Response runbook(@PathVariable Long projectId) {
+        List<SourceConnection> connections = connectionService.findByProject(projectId);
+        List<TemplateItem> items = RunbookTemplatePresets.build(connections);
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException(
+                "RUNBOOK 자동 생성은 GitHub 연동이 필요합니다. 먼저 GitHub 소스를 연동하세요.");
+        }
+        return Response.from(templateService.create(
+            projectId, "운영 인수인계 RUNBOOK 세트", items, SecurityUtils.currentUser()));
+    }
+
     @GetMapping
     public List<Response> list(@PathVariable Long projectId) {
         return templateService.findByProject(projectId).stream().map(Response::from).toList();
@@ -104,18 +119,34 @@ public class TemplateController {
             return List.of();
         }
         return req.items().stream()
-            .map(i -> new TemplateItem(i.title(), i.prompt(), i.categoryId()))
+            .map(i -> new TemplateItem(
+                i.title(), i.prompt(), i.categoryId(), i.audience(), cleanSections(i.sections()), i.detailLevel()))
             .toList();
     }
 
-    public record ItemDto(@NotBlank String title, @NotBlank String prompt, Long categoryId) {}
+    /** 빈 문자열·공백 목차는 제거하고 트림 — UI에서 줄바꿈으로 입력한 목차를 정리한다. */
+    private static List<String> cleanSections(List<String> sections) {
+        if (sections == null) {
+            return List.of();
+        }
+        return sections.stream().map(String::trim).filter(s -> !s.isBlank()).toList();
+    }
+
+    public record ItemDto(
+        @NotBlank String title,
+        @NotBlank String prompt,
+        Long categoryId,
+        String audience,
+        List<String> sections,
+        DetailLevel detailLevel) {}
 
     public record UpsertRequest(@NotBlank String name, List<ItemDto> items) {}
 
     public record Response(Long id, String name, List<ItemDto> items) {
         static Response from(GuideTemplate t) {
             List<ItemDto> items = t.getItems().stream()
-                .map(i -> new ItemDto(i.title(), i.prompt(), i.categoryId()))
+                .map(i -> new ItemDto(
+                    i.title(), i.prompt(), i.categoryId(), i.audience(), i.sections(), i.detailLevel()))
                 .toList();
             return new Response(t.getId(), t.getName(), items);
         }

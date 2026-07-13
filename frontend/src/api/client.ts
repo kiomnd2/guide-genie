@@ -79,10 +79,15 @@ export const projectsApi = {
   get: (id: number) => api.get<Project>(`/projects/${id}`),
 }
 
+export type DetailLevel = 'BRIEF' | 'STANDARD' | 'DETAILED'
+
 export interface TemplateItem {
   title: string
   prompt: string
   categoryId: number | null
+  audience?: string | null // 대상 독자
+  sections?: string[] // 포함할 목차(섹션) 제목
+  detailLevel?: DetailLevel // 상세 수준(기본 STANDARD)
 }
 
 export interface GuideTemplate {
@@ -97,6 +102,8 @@ export const templatesApi = {
     api.post<GuideTemplate>(`/projects/${projectId}/templates`, { name, items }),
   auto: (projectId: number) =>
     api.post<GuideTemplate>(`/projects/${projectId}/templates/auto`),
+  runbook: (projectId: number) =>
+    api.post<GuideTemplate>(`/projects/${projectId}/templates/runbook`),
   update: (projectId: number, id: number, name: string, items: TemplateItem[]) =>
     api.put<GuideTemplate>(`/projects/${projectId}/templates/${id}`, { name, items }),
   del: (projectId: number, id: number) => api.del(`/projects/${projectId}/templates/${id}`),

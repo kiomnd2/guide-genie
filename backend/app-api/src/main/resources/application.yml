@@ -39,7 +39,12 @@ guidegenie:
   rag:
     chunk-size: 800
     chunk-overlap: 100
-    top-k: 6
+    top-k: 6            # QnA 검색 시 컨텍스트 청크 수
+    generate-top-k: 12  # 가이드 생성 시 컨텍스트 청크 수(RUNBOOK 수준 근거 확보)
+  github:
+    # 저장소 본문 수집 상한(상세 가이드 근거). 문서 > 설정 > 소스 순으로 선별.
+    max-files: 40
+    max-file-bytes: 100000
 
 springdoc:
   swagger-ui:

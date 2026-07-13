@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import {
   categoriesApi, templatesApi,
-  type Category, type GuideTemplate, type TemplateItem,
+  type Category, type DetailLevel, type GuideTemplate, type TemplateItem,
 } from '../api/client'
 import CategorySelect from '../components/CategorySelect'
 
@@ -12,7 +12,15 @@ interface Draft {
   items: TemplateItem[]
 }
 
-const emptyItem = (): TemplateItem => ({ title: '', prompt: '', categoryId: null })
+const emptyItem = (): TemplateItem => ({
+  title: '', prompt: '', categoryId: null, audience: '', sections: [], detailLevel: 'STANDARD',
+})
+
+const DETAIL_OPTIONS: { value: DetailLevel; label: string }[] = [
+  { value: 'BRIEF', label: '간단' },
+  { value: 'STANDARD', label: '표준' },
+  { value: 'DETAILED', label: '상세' },
+]
 
 // 프로젝트 > 템플릿 탭: 가이드 세트 템플릿 관리 + 일괄 생성(실행).
 export default function ProjectTemplates() {
@@ -73,6 +81,14 @@ export default function ProjectTemplates() {
     load()
     startEdit(t)
     setMsg(`연동 기준으로 "${t.name}" 템플릿을 생성했습니다 (${t.items.length}개 항목). 검토·분류 지정 후 저장하세요.`)
+  })
+
+  const runbookFromConnections = () => guard(async () => {
+    setMsg(undefined)
+    const t = await templatesApi.runbook(pid)
+    load()
+    startEdit(t)
+    setMsg(`GitHub 기준으로 "${t.name}" 템플릿을 생성했습니다 (${t.items.length}개 챕터). 저장 후 실행하면 인수인계 수준 RUNBOOK 초안이 일괄 생성됩니다.`)
   })
 
   const startNew = () => { setMsg(undefined); setDraft({ id: null, name: '', items: [emptyItem()] }) }
@@ -138,7 +154,8 @@ export default function ProjectTemplates() {
     <div>
       <h2>템플릿</h2>
       <p style={{ color: '#57606a', fontSize: 13, marginTop: 0 }}>
-        (제목 · 프롬프트 · 분류) 항목들을 묶어 두고, <b>실행</b>하면 세트 전체가 초안으로 일괄 생성됩니다.
+        항목마다 <b>제목 · 목적 · 대상 독자 · 목차 · 상세 수준</b>을 지정해 두고 <b>실행</b>하면,
+        세트 전체가 목차를 따르는 상세 초안으로 일괄 생성됩니다.
       </p>
       {error && <div className="card" style={{ color: '#cf222e' }}>{error}</div>}
       {msg && <div className="card" style={{ color: '#1a7f37' }}>{msg}</div>}
@@ -204,10 +221,13 @@ export default function ProjectTemplates() {
       </div>
 
       {!draft && (
-        <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div className="card" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button onClick={startNew}>+ 새 템플릿</button>
           <button style={{ background: '#8250df' }} onClick={autoFromConnections}>⚙ 연동 기준 자동 생성</button>
-          <span style={{ color: '#57606a', fontSize: 12 }}>등록된 소스 연동으로 추천 항목을 채운 템플릿을 만듭니다.</span>
+          <button style={{ background: '#1f883d' }} onClick={runbookFromConnections}>📘 RUNBOOK 세트 자동 생성</button>
+          <span style={{ color: '#57606a', fontSize: 12 }}>
+            RUNBOOK 세트는 GitHub 소스를 근거로 개요·구조·환경·DB·API·배포·장애대응 등 인수인계 챕터를 상세하게 생성합니다.
+          </span>
         </div>
       )}
 
@@ -229,8 +249,25 @@ export default function ProjectTemplates() {
                 </div>
                 <button className="btn-sm btn-danger" onClick={() => removeItem(idx)}>삭제</button>
               </div>
-              <textarea style={{ marginTop: 6 }} rows={2} placeholder="AI 생성 프롬프트" value={item.prompt}
-                onChange={(e) => patchItem(idx, { prompt: e.target.value })} />
+              <textarea style={{ marginTop: 6 }} rows={2} placeholder="가이드 목적/요청 — 무엇을 다룰지"
+                value={item.prompt} onChange={(e) => patchItem(idx, { prompt: e.target.value })} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <input style={{ flex: 2 }} placeholder="대상 독자 (예: 신규 입사자)" value={item.audience ?? ''}
+                  onChange={(e) => patchItem(idx, { audience: e.target.value })} />
+                <select style={{ flex: 1 }} value={item.detailLevel ?? 'STANDARD'}
+                  onChange={(e) => patchItem(idx, { detailLevel: e.target.value as DetailLevel })}>
+                  {DETAIL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>상세 수준: {o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <textarea style={{ marginTop: 6 }} rows={3}
+                placeholder={'포함할 목차 (한 줄에 하나씩) — 예)\n사전 준비물\n설치 단계\n동작 확인'}
+                value={(item.sections ?? []).join('\n')}
+                onChange={(e) => patchItem(idx, { sections: e.target.value.split('\n') })} />
+              <div style={{ fontSize: 11, color: '#57606a', marginTop: 2 }}>
+                목차를 지정하면 각 항목을 「## 섹션」으로 빠짐없이 채워 상세 가이드를 만듭니다. 비워두면 AI가 목차를 스스로 구성합니다.
+              </div>
             </div>
           ))}
           <div style={{ marginTop: 8 }}>

@@ -96,4 +96,4 @@ io.hz.guidegenie.<domain>
 - **JPA 감사 + OffsetDateTime**: `JpaConfig`의 커스텀 `DateTimeProvider` 없으면 저장 시 `Cannot convert LocalDateTime to OffsetDateTime`. 독립 `@CreatedDate` 엔티티(GuideRevision·QnaSession·QnaMessage)는 `@EntityListeners(AuditingEntityListener.class)`를 각자 붙여야 채워진다.
 - **Spring AI 미도입**: 임베딩 벡터 계산/검색과 LLM 호출은 `domain-rag`·`domain-guide`·`domain-qna`의 `// TODO`. 붙일 때 Spring AI(Vertex AI Gemini + pgvector VectorStore)를 `domain-rag`에 추가하고, project-id 미설정 시 부팅 실패하므로 자동설정을 프로파일로 게이팅할 것.
 - **`@Async` 자기호출**: `SyncService.syncAllIncremental` → `this.sync`는 자기호출이라 비동기로 안 돈다(스케줄러에선 순차 실행 의도라 무방). API 경로(`SourceConnectionService.create` → `syncService.sync`)는 빈 경계를 넘으므로 정상 비동기.
-- **커넥터는 스텁**: Jira/Confluence/GitHub `*Client`는 `fetch*`가 빈 리스트 반환. 실제 수집은 M1에서.
+- **커넥터 구현 현황**: **GitHub `*Client`는 구현됨** — README·파일 구조·의미 있는 파일 본문(문서>설정>소스 순, `guidegenie.github.max-files`/`max-file-bytes`로 상한)을 수집해 RAG 색인 → 상세 가이드 근거로 사용. **Jira/Confluence `*Client`는 아직 스텁**(`fetchAll`이 빈 리스트 반환, `// TODO`).
